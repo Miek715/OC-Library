@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OC Management & Board Studio</title>
+  
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="logo" onclick="navigateTo('home')">
+      Omni's OC Bank
+    </div>
+    <nav>
+      <div class="save-status-indicator">
+        <span class="save-status-dot" id="status-dot"></span>
+        <span id="status-text">Saved</span>
+      </div>
+      <button class="btn" onclick="navigateTo('home')">Home</button>
+      <button class="btn" onclick="createNewFolder()">+ New Folder</button>
+      <button class="btn btn-primary" onclick="createNewBoard()">+ New Board</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- PAGE 1: HOME PAGE -->
+    <div id="page-home" class="page active">
+      <input type="text" id="home-search" class="search-bar" placeholder="Search folders, character fields, or boards..." oninput="renderHome()">
+      
+      <div class="section-title">
+        <span>Folders</span>
+      </div>
+      <div id="folder-grid" class="grid"></div>
+
+      <div class="section-title">
+        <span>Boards</span>
+        <button class="btn btn-primary" onclick="createNewBoard()">+ New Board</button>
+      </div>
+      <div id="board-grid" class="grid"></div>
+    </div>
+
+    <!-- PAGE 2: OC EDITOR PAGE -->
+    <div id="page-oc-editor" class="page">
+      <div class="section-title">
+        <span id="oc-editor-heading">Character Details</span>
+        <button class="btn btn-primary" onclick="navigateTo('home')">Done</button>
+      </div>
+
+      <div class="oc-editor-grid">
+        <div class="image-picker-container">
+          <div class="image-preview" id="oc-img-preview-box"></div>
+          <input type="file" id="oc-file-input" accept="image/*" style="display: none;" onchange="handleImageSelected(event)">
+          <button class="btn" onclick="document.getElementById('oc-file-input').click()">Upload Image</button>
+        </div>
+
+        <div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Character Name</label>
+              <input type="text" id="oc-name" class="form-control" placeholder="(Untitled Character)" list="dl-name">
+              <datalist id="dl-name"></datalist>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <input type="text" id="oc-gender" class="form-control" list="dl-gender">
+              <datalist id="dl-gender"></datalist>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Faction</label>
+              <input type="text" id="oc-faction" class="form-control" list="dl-faction">
+              <datalist id="dl-faction"></datalist>
+            </div>
+            <div class="form-group">
+              <label>Age</label>
+              <input type="text" id="oc-age" class="form-control" list="dl-age">
+              <datalist id="dl-age"></datalist>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Tags (comma separated)</label>
+            <input type="text" id="oc-tags" class="form-control" placeholder="hero, mage, leader">
+          </div>
+
+          <div class="form-group">
+            <label>Description & Notes (Formatted Text)</label>
+            <div class="editor-toolbar">
+              <button class="editor-btn" onclick="execCmd('bold')"><b>B</b></button>
+              <button class="editor-btn" onclick="execCmd('italic')"><i>I</i></button>
+              <button class="editor-btn" onclick="execCmd('underline')"><u>U</u></button>
+              <button class="editor-btn" onclick="execCmd('formatBlock', '<h1>')">H1</button>
+              <button class="editor-btn" onclick="execCmd('formatBlock', '<h2>')">H2</button>
+              <button class="editor-btn" onclick="execCmd('insertUnorderedList')">• List</button>
+            </div>
+            <div id="oc-notes-editor" class="wysiwyg-content" contenteditable="true"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: BOARD STUDIO -->
+    <div id="page-board" class="page">
+      <div class="board-header-bar">
+        <input type="text" id="board-title" class="board-title-input" oninput="updateBoardTitle(this.value)">
+        <button class="btn btn-primary" onclick="addNodeToBoard()">+ Add Node</button>
+        <button class="btn" onclick="clearBoardConnections()">Clear Connections</button>
+      </div>
+      <div class="board-canvas-container" id="board-container">
+        <svg class="connections-layer" id="board-svg"></svg>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL 1: FOLDER VIEW -->
+  <div class="modal-overlay" id="modal-folder-view">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-folder-title">Folder Details</h3>
+        <button class="btn" onclick="closeModal('modal-folder-view')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="folder-oc-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="openAddExistingModal()">+ Add Existing OC</button>
+        <button class="btn btn-primary" onclick="closeModal('modal-folder-view'); openOcEditor(null, currentActiveFolderId)">+ Create New OC</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADD EXISTING OC -->
+  <div class="modal-overlay" id="modal-add-existing">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Select Characters for Folder</h3>
+        <button class="btn" onclick="closeModal('modal-add-existing')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="existing-oc-selection-list" class="selectable-oc-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('modal-add-existing')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: CROP & ROTATE -->
+  <div class="modal-overlay" id="modal-cropper">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Crop & Rotate Image</h3>
+        <button class="btn" onclick="closeModal('modal-cropper')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cropper-container-wrapper">
+          <img id="cropper-target-img" src="">
+        </div>
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+          <button class="btn" onclick="cropper.rotate(-90)">↺ Rotate Left</button>
+          <button class="btn" onclick="cropper.rotate(90)">↻ Rotate Right</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-cropper')">Cancel</button>
+        <button class="btn btn-primary" onclick="applyImageCrop()">Apply Crop</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
